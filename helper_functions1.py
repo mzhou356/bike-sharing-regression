@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
+# In[9]:
 
 
 # import libraries 
@@ -22,6 +22,10 @@ from sklearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, GridSearchCV
+import warnings
+warnings.filterwarnings('ignore')
+from statsmodels.tsa.seasonal import seasonal_decompose
+import itertools
 
 
 # In[6]:
@@ -226,7 +230,7 @@ class BikeLinearRegression():
         return merged_df
 
 
-# In[ ]:
+# In[8]:
 
 
 class UserLogReg():
@@ -336,4 +340,126 @@ class UserLogReg():
         bottom_5 = coefs_df[0].abs().sort_values(ascending=False)[-5:].reset_index().rename(
             columns={'index': 'features', 0: 'coef'})
         return top_10, bottom_5
+
+
+# In[ ]:
+
+
+class TimeSeries():
+    '''
+    helper function for timeseries analysis
+    '''
+
+    def __init__(self, df, target):
+        '''
+        initialize the object with the user df and target value 
+        df: pandas df 
+        target: string 
+        '''
+        self.df = df
+        self.target = target
+        
+    def create_timeseries(self):
+        '''
+        returns a dataframe with just time series component
+        '''
+        return self.df[[self.target]]
+    
+    def plot_time_monthly(self, plot = False):
+        '''
+        create monthly sum and generate a plot
+        '''
+        monthly_time = self.create_timeseries().resample('m').sum()
+        if plot:
+            monthly_time.plot()
+        return monthly_time
+    
+    def generate_decomp(self):
+        '''
+        generate decompose plots
+        
+        '''
+        decomposition_cnt = seasonal_decompose(self.plot_time_monthly(), freq=12)
+        fig = plt.figure()
+        fig = decomposition_cnt.plot()
+        fig.set_size_inches(15, 8)
+        
+    def generate_train_test(self, df):
+        '''
+        generate test for future 10% data
+        '''
+        ind = int(len(df)*0.9)
+        train, test = df[:ind], df[ind:]
+        return train, test 
+    
+    def generate_combo(self):
+        '''
+        create p,d,q combo 
+        '''
+        # Define the p, d and q parameters to take any value between 0 and 2
+        p = d = q = range(0,2)
+        # Generate all different combinations of p, q and q triplets
+        pdq = list(itertools.product(p, d, q))
+        # Generate all different combinations of seasonal p, q and q triplets (use 12 for frequency)
+        pdqs = [(x[0], x[1], x[2], 12) for x in pdq]
+        return pdq, pdqs
+    
+    def model_parameter_tuning(self,combo,combos):
+        '''
+        find best pdq
+        
+        '''
+        ans = []
+        for comb in pdq:
+            for combs in pdqs:
+                try:
+                    mod = sm.tsa.statespace.SARIMAX(train,
+                                            order=comb,
+                                            seasonal_order=combs,
+                                            enforce_stationarity=False,
+                                            enforce_invertibility=False)
+
+                    output = mod.fit()
+                    ans.append([comb, combs, output.aic])
+#                     print('ARIMA {} x {}12 : AIC Calculated ={}'.format(comb, combs, output.aic))
+                except:
+                    continue
+        ans_df = pd.DataFrame(ans, columns=['pdq', 'pdqs', 'aic'])
+        return ans_df.loc[ans_df['aic'].idxmin()]
+    
+    def sarimax_model(self, train, pdq, pdqs):
+        '''
+        create sarimax model with best pdq, pdqs
+        
+        '''
+        ARIMA_MODEL = sm.tsa.statespace.SARIMAX(train,
+                                order=pdq,
+                                seasonal_order=pdqs,
+                                enforce_stationarity=False,
+                                enforce_invertibility=False)
+        output = ARIMA_MODEL.fit()
+        return output
+    
+    def forecast(self, model, test):
+        '''
+        create forecastead result and append to test table 
+        '''
+        # Get forecast
+        pred = model.forecast(steps = len(test))
+        test['forecasted'] = pred.tolist()
+        return test 
+    
+    def plot_finalresults(self, test, train):
+        '''
+        plot final result with test and train 
+        
+        '''
+        plt.plot(test.cnt.resample('m').sum().index,
+         test.cnt.resample('m').sum(), label='cnt_test')
+        plt.plot(test.forecasted.resample('m').sum().index,
+         test.forecasted.resample('m').sum(), label = 'forecast')
+        plt.plot(train.resample('m').sum().index, train.resample('m').sum(), label = 'train')
+        plt.legend()
+        plt.xticks(rotation = '80')
+        plt.show()
 
