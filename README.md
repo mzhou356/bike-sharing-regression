@@ -7,3 +7,6 @@ Data Source: https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset
       * Weather Information: http://www.freemeteo.com 
       * Holiday Schedule: http://dchr.dc.gov/page/holiday-schedule
   
+ Google slide: https://docs.google.com/presentation/d/1qnJeEjhnirk8CnebKaHb_3ECITmTdtwuEuynRNlAu_A/edit#slide=id.g5e50a81f87_0_96
+
+  
