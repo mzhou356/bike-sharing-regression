@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[5]:
 
 
 # import libraries 
@@ -12,13 +12,19 @@ import seaborn as sns
 get_ipython().run_line_magic('matplotlib', 'inline')
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import classification_report,roc_curve, auc, accuracy_score, confusion_matrix
+from sklearn.metrics import balanced_accuracy_score
 from sklearn.linear_model import LassoCV, RidgeCV, LinearRegression
 from sklearn.metrics import r2_score
 from statsmodels.api import OLS
 import statsmodels.api as sm
+from sklearn.pipeline import Pipeline
+from imblearn.over_sampling import SMOTE
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split, GridSearchCV
 
 
-# In[2]:
+# In[6]:
 
 
 # change column value to understandable string 
@@ -59,7 +65,7 @@ class DataCleaning():
     
 
 
-# In[3]:
+# In[7]:
 
 
 # create a class for multilinear regress
@@ -198,7 +204,7 @@ class BikeLinearRegression():
                                       cv=10, scoring='neg_mean_absolute_error')*-1)
         print('MAE:', MAE)
         # root mean squared error (RMSE)
-        RMSE = np.mean(np.sqrt((cross_val_score(linreg, x_cols, target,
+        RMSE = np.mean(np.sqrt((cross_val_score(linreg,x_cols, target,
                                                 cv=10, scoring='neg_mean_squared_error')*-1)))
         print('RMSE:', RMSE)
         # r2 score
@@ -223,5 +229,111 @@ class BikeLinearRegression():
 # In[ ]:
 
 
+class UserLogReg():
+    '''
+    helper function for streamline user logistic regression
+    '''
 
+    def __init__(self, df, target):
+        '''
+        initialize the object with the user df and target value 
+        df: pandas df 
+        target: string 
+        '''
+        self.df = df
+        self.target = target
+
+    def target_features(self):
+        '''
+        split the dataframe into outcome and features
+
+        '''
+        outcome = self.df[self.target]
+        features = self.df.drop(columns=[self.target])
+        return outcome, features
+
+    def logreg(self, weight, X_train, y_train, X_test,y_test):
+        '''
+        inputs:
+        weight: class weight for logreg 
+        returns:
+        y_score
+        fpr,tpr, thresholds 
+        also auc curve 
+        '''
+        logreg = LogisticRegression(C=0.03359818286283781,
+                                    fit_intercept=True, class_weight=weight, max_iter=150, solver='lbfgs')
+        model_log = logreg.fit(X_train, y_train)
+        y_pred = model_log.predict(X_test)
+        fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+        AUC = auc(fpr, tpr)
+        return model_log, y_pred, fpr, tpr, thresholds, AUC
+
+    def smote_oversampling(self, X_train, y_train):
+        '''
+        use smote to strategically oversample the minority class
+        '''
+        # initialize smote
+        smote = SMOTE()
+        X_train_resampled, y_train_resampled = smote.fit_sample(
+            X_train, y_train)
+        return X_train_resampled, y_train_resampled
+
+    def grid_search_parameters(self, X_train, y_train):
+        '''
+        perform grid search pipeline to find the best hyper paramater 
+        returns the best model with the best setting
+
+        '''
+        pipe = Pipeline([('classifier', LogisticRegression())])
+        param_grid = [{'classifier': [LogisticRegression()], 'classifier__penalty': ['l2'], 'classifier__C': np.logspace(-4, 4, 20), 'classifier__solver': ['liblinear', 'lbfgs']}
+                      ]
+        # Create grid search object
+        clf = GridSearchCV(pipe, param_grid=param_grid,
+                           cv=5, verbose=True, n_jobs=-1)
+        # Fit on data
+        best_clf = clf.fit(X_train, y_train)
+        return best_clf
+
+    def confusion_table(self, real_label, pred_label):
+        '''
+        inputs:
+        real_label: an array of class values that are true 
+        pred_label: an array of predicted class values
+        returns:
+        a confusion matrix table
+        '''
+        matrix = confusion_matrix(real_label, pred_label)
+        df = pd.DataFrame(matrix, index=['True_0', 'True_1'], columns=[
+                          'Pred_0', 'Pred_1'])
+        return df
+
+    def plot_auc_curve(self, true_y, pred_y, cutoff=0.5):
+        '''
+        inputs:
+        true_y: array of true_y values
+        pred_y: array of pred_y values 
+        cutoffs: cutoff point for classificaiton
+        returns:
+        auc_curve and auc area 
+        '''
+        fpr, tpr, thresholds = roc_curve(true_y, pred_y)
+        area = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label=f'ROC curve {cutoff}')
+        plt.legend()
+        return area
+
+    def coef_results(self, final_model, X):
+        '''
+        display coef results
+
+        '''
+        coefs = final_model[0].coef_[0]
+        features = X.columns
+        coefs_df = pd.DataFrame(dict(zip(features, coefs)), index=[0]).T
+        top_10 = coefs_df[0].abs().sort_values(ascending=False)[:10].reset_index().rename(
+            columns={'index': 'features', 0: 'coef'})
+        bottom_5 = coefs_df[0].abs().sort_values(ascending=False)[-5:].reset_index().rename(
+            columns={'index': 'features', 0: 'coef'})
+        return top_10, bottom_5
 
