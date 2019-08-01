@@ -226,7 +226,9 @@ class BikeLinearRegression():
         '''
         merged_df = pd.concat(dfs, axis=1)
         if plot:
-            merged_df.plot.bar(subplots=False, sharex=True)
+            merged_df.plot.barh(subplots=False, sharex=True)
+            plt.xlabel('coeficients')
+            plt.ylabel('features')
         return merged_df
 
 
