@@ -20,38 +20,38 @@ Data Source: https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset
    - Method: Linear Regression
    - StatsModels 
    - sklearn RidgeCV, LassoCV, LinearRegressionCV
-   - target variable: total bike rentals (cnt)
+   - Target variable: total bike rentals (cnt)
 - Top 10 features for more casual users than registered users
   - casual users: daily, weekly, or monthly pass (one time use)
   - registered users: daykey, monthly, yearly membership (recurring payment) 
   - Method: Logistic Regression
   - sklearn logistic regression 
-  - target variable: 1 for more casual users than registered users otherwise 0 
+  - Target variable: 1 for more casual users than registered users otherwise 0 
 - Time Series Analysis: 
   - Monthly trend 
   - Seasonality 
   - Forecast model for future prediction 
   - StatsModel SARIMAX 
-  - target variable: total bike rentals (cnt)
+  - Target variable: total bike rentals (cnt)
   
 ## Results: 
 - Linear Regression on total bike rentals:
 
 ![](images/coefs.png)
 
-  - rush hours (8-9am, 12-1pm, 4-7pm) increases rental demand most 
-  - sleeping time (3-4am) decreases rental demand most 
+  - Rush hours (8-9am, 12-1pm, 4-7pm) increases rental demand most 
+  - Sleeping time (3-4am) decreases rental demand most 
   
 - Logist Regression on more casual users than registered users:
-  - sleeping time (2-4am) has the biggest impact 
-  - warmer temperature and holiday seasons for more tourists 
+  - Sleeping time (2-4am) has the biggest impact 
+  - Warmer temperature and holiday seasons for more tourists 
 
 - Time Series Analyses
 
 ![](images/forecast.png)
 
   - Steady increasing trend from 2011 to 2013
-    - need more data for recent years since lyft and uber 
+    - Need more data for recent years since lyft and uber 
   - Bike demand reduces during cold and hot months and increases during mild weather months 
   
 - Final Conclusions:
